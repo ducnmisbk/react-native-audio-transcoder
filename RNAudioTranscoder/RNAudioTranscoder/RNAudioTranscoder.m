@@ -3,6 +3,8 @@
 #import <React/RCTUtils.h>
 #import <React/RCTLog.h>
 #import <AVFoundation/AVFoundation.h>
+#import "HJImagesToVideo.h"
+#import <AssetsLibrary/AssetsLibrary.h>
 
 @implementation RNAudioTranscoder
 
@@ -15,60 +17,91 @@ RCT_EXPORT_METHOD(
 ) {
     NSString *inputPath = obj[@"input"];
     NSURL *inputURL = [[NSURL alloc] initFileURLWithPath:inputPath];
-    NSString *outputPath = obj[@"output"];
-    NSURL *outputURL = [[NSURL alloc] initFileURLWithPath:outputPath];
+//    NSString *outputPath = obj[@"output"];
+//    NSError *rgError = nil;
+//    NSRegularExpression *replacer = [NSRegularExpression regularExpressionWithPattern:@"\\.mp3$"
+//                                                                              options:NSRegularExpressionCaseInsensitive
+//                                                                                error:&rgError];
+//
+//    if (rgError != nil) {
+//        reject(@"Failed to create temp path for output", rgError.localizedDescription, rgError);
+//        return;
+//    }
+    
+    AVURLAsset *audiotrack = [AVURLAsset assetWithURL:inputURL];
+    NSMutableArray *imagesArray = [NSMutableArray array];
+    for (int i = 0; i < CMTimeGetSeconds(audiotrack.duration) - 1; ++i) {
+        [imagesArray addObject:[UIImage imageNamed:@"soundOnly"]];
+    }
+    NSString *tempPath = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"temp.mp4"]];
+    [[NSFileManager defaultManager] removeItemAtPath:tempPath error:NULL];
+    
+    NSString *output = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"output.mp4"]];
+    [[NSFileManager defaultManager] removeItemAtPath:output error:NULL];
+    
+    [HJImagesToVideo videoFromImages:imagesArray
+                              toPath:tempPath
+                            withSize:CGSizeMake(670, 380)
+                             withFPS:1
+                  animateTransitions:nil
+                   withCallbackBlock:^(BOOL success1) {
+        
+        NSError *error = nil;
+        
+        NSURL *videoUrl = [[NSURL alloc] initFileURLWithPath:tempPath];
+        
+        [self mergeAudio:inputURL withVideo:videoUrl andSaveToPathUrl:output withCompletion:^(BOOL success) {
+            if (success) {
+                UISaveVideoAtPathToSavedPhotosAlbum(output, self, nil, nil);
+                resolve(@"Successfully encoded audio");
+            } else {
+                reject(@"Export Failed", nil, nil);
+            }
+        }];
+    }];
+}
 
-    NSError *rgError = nil;
-    NSRegularExpression *replacer = [NSRegularExpression regularExpressionWithPattern:@"\\.m4a$"
-                                                                              options:NSRegularExpressionCaseInsensitive
-                                                                                error:&rgError];
+- (void)mergeAudio:(NSURL *) audioURL withVideo:(NSURL *) videoURL andSaveToPathUrl:(NSString *) savePath withCompletion:(void (^)(BOOL success))completion {
 
-    NSString *tempPath = [replacer stringByReplacingMatchesInString:outputPath
-                                                            options:0
-                                                              range:NSMakeRange(0, outputPath.length)
-                                                       withTemplate:@".m4a"];
+    AVURLAsset* audioAsset = [[AVURLAsset alloc]initWithURL:audioURL options:nil];
+    AVURLAsset* videoAsset = [[AVURLAsset alloc]initWithURL:videoURL options:nil];
 
-    if (rgError != nil) {
-        reject(@"Failed to create temp path for output", rgError.localizedDescription, rgError);
-        return;
+    AVMutableComposition* mixComposition = [AVMutableComposition composition];
+
+    AVMutableCompositionTrack *compositionCommentaryTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio
+    preferredTrackID:kCMPersistentTrackID_Invalid];
+    [compositionCommentaryTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration)
+    ofTrack:[[audioAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+    atTime:kCMTimeZero error:nil];
+
+    AVMutableCompositionTrack *compositionVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo
+    preferredTrackID:kCMPersistentTrackID_Invalid];
+    [compositionVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration)
+    ofTrack:[[videoAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+    atTime:kCMTimeZero error:nil];
+
+    AVAssetExportSession* _assetExport = [[AVAssetExportSession alloc] initWithAsset:mixComposition
+    presetName:AVAssetExportPresetPassthrough];
+
+    NSURL *savetUrl = [NSURL fileURLWithPath:savePath];
+
+    if ([[NSFileManager defaultManager] fileExistsAtPath:savePath]) {
+        [[NSFileManager defaultManager] removeItemAtPath:savePath error:nil];
     }
 
-    NSURL *tempUrl = [[NSURL alloc] initFileURLWithPath:tempPath];
+    _assetExport.outputFileType = @"com.apple.quicktime-movie";
 
-    AVMutableComposition *input = [[AVMutableComposition alloc] init];
-    AVURLAsset *track = [AVURLAsset assetWithURL:inputURL];
 
-    CMTime start = kCMTimeZero;
-    NSError *error = nil;
+    _assetExport.outputURL = savetUrl;
+    _assetExport.shouldOptimizeForNetworkUse = YES;
 
-    BOOL success = [input insertTimeRange:CMTimeRangeMake(start, track.duration) ofAsset:track atTime:start error:&error];
-
-    if (!success) {
-        reject(@"Setup failed", error.localizedDescription, error);
-        return;
-    }
-
-    AVAssetExportSession *outputSession = [[AVAssetExportSession alloc] initWithAsset:input presetName:AVAssetExportPresetPassthrough];
-    outputSession.metadata = input.metadata;
-    outputSession.outputURL = tempUrl;
-    outputSession.outputFileType = AVFileTypeAppleM4A;
-
-    [outputSession exportAsynchronouslyWithCompletionHandler:^{
-
-        if (outputSession.status == AVAssetExportSessionStatusCompleted)
-        {
-
-            resolve(@"Successfully encoded audio");
+    [_assetExport exportAsynchronouslyWithCompletionHandler:^(void) {
+        NSLog(@"fileSaved !");
+        if (_assetExport.status == AVAssetExportSessionStatusCompleted) {
+            completion(YES);
+        } else {
+            completion(NO);
         }
-        else if (outputSession.status == AVAssetExportSessionStatusCancelled)
-        {
-            reject(@"Export Cancelled", @"Exporting audio file was cancelled", nil);
-        }
-        else
-        {
-            reject(@"Export Failed", outputSession.error.localizedDescription, outputSession.error);
-        }
-
     }];
 }
 

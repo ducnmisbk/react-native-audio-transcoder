@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		BFE0FDB41E7FEA6500078E96 /* RNAudioTranscoder.m in Sources */ = {isa = PBXBuildFile; fileRef = BFE0FDB31E7FEA6500078E96 /* RNAudioTranscoder.m */; };
 		BFE0FDB51E7FEA6500078E96 /* RNAudioTranscoder.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = BFE0FDB21E7FEA6500078E96 /* RNAudioTranscoder.h */; };
+		CEC16A22239F9F1000C2D604 /* HJImagesToVideo.m in Sources */ = {isa = PBXBuildFile; fileRef = CEC16A21239F9F1000C2D604 /* HJImagesToVideo.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,6 +29,8 @@
 		BFE0FDAF1E7FEA6500078E96 /* libRNAudioTranscoder.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRNAudioTranscoder.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFE0FDB21E7FEA6500078E96 /* RNAudioTranscoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNAudioTranscoder.h; sourceTree = "<group>"; };
 		BFE0FDB31E7FEA6500078E96 /* RNAudioTranscoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNAudioTranscoder.m; sourceTree = "<group>"; };
+		CEC16A20239F9F1000C2D604 /* HJImagesToVideo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HJImagesToVideo.h; sourceTree = "<group>"; };
+		CEC16A21239F9F1000C2D604 /* HJImagesToVideo.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HJImagesToVideo.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +63,8 @@
 		BFE0FDB11E7FEA6500078E96 /* RNAudioTranscoder */ = {
 			isa = PBXGroup;
 			children = (
+				CEC16A20239F9F1000C2D604 /* HJImagesToVideo.h */,
+				CEC16A21239F9F1000C2D604 /* HJImagesToVideo.m */,
 				BFE0FDB21E7FEA6500078E96 /* RNAudioTranscoder.h */,
 				BFE0FDB31E7FEA6500078E96 /* RNAudioTranscoder.m */,
 			);
@@ -106,6 +111,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = BFE0FDA61E7FEA6500078E96;
@@ -123,6 +129,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CEC16A22239F9F1000C2D604 /* HJImagesToVideo.m in Sources */,
 				BFE0FDB41E7FEA6500078E96 /* RNAudioTranscoder.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

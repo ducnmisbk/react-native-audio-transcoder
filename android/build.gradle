@@ -14,21 +14,28 @@ apply plugin: 'idea'
 apply plugin: 'com.android.library'
 
 android {
-	compileSdkVersion 28
-	buildToolsVersion "28.0.3"
+	compileSdkVersion 23
+	buildToolsVersion "23.0.1"
 
 	defaultConfig {
 		minSdkVersion 16
-		targetSdkVersion 28
+		targetSdkVersion 22
 		versionCode 1
 		versionName "1.0"
+		ndk {
+			abiFilters "armeabi-v7a","arm64-v8a"
+		}
 	}
 	lintOptions {
 		abortOnError false
+	}
+
+	configurations.all {
+		resolutionStrategy.force 'com.google.code.findbugs:jsr305:3.0.2'
 	}
 }
 
 dependencies {
 	compile 'com.facebook.react:react-native:+'
-	compile 'com.writingminds:FFmpegAndroid:0.3.2'
+	implementation 'com.github.microshow:RxFFmpeg:2.1.0'
 }

@@ -1,14 +1,6 @@
 package com.rnaudiotranscoder;
 
-import android.content.Context;
-import android.net.Uri;
 import android.util.Log;
-
-import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
-import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
-import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
-import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
-import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
 
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -19,81 +11,75 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
-import com.facebook.react.modules.core.DeviceEventManagerModule;
+
+
+import io.microshow.rxffmpeg.RxFFmpegInvoke;
+import io.microshow.rxffmpeg.RxFFmpegSubscriber;
+
 
 public final class RNAudioTranscoder extends ReactContextBaseJavaModule {
 
-	private final FFmpeg ffmpeg;
+    public final String COMMAND_FORMAT = "ffmpeg -loop 1 -i %s -i %s -c:a copy -c:v libx264 -shortest %s";
+    public final String TAG = "RNAudioTranscoder";
 
-	public final String COMMAND_FORMAT = "-i %s -codec:a libmp3lame -qscale:a 2 %s";
-	public final String TAG = "RNAudioTranscoder";
+    public RNAudioTranscoder(final ReactApplicationContext context) {
+        super(context);
+    }
 
-	public RNAudioTranscoder (final ReactApplicationContext context) {
-		super(context);
-		ffmpeg = FFmpeg.getInstance(context);
-	}
+    @Override
+    public final String getName() {
+        return "RNAudioTranscoder";
+    }
 
-	@Override
-	public final String getName() {
-		return "RNAudioTranscoder";
-	}
+    @ReactMethod
+    public final void transcode(final ReadableMap options, final Promise promise) {
+        final Optional<String> paramErrors = this.checkRequiredOptions(options);
+        if (paramErrors.exists) {
+            promise.reject(paramErrors.value);
+        } else {
+            final String input = options.getString("input");
+            final String output = options.getString("output");
+            String[] commands = this.createFFmpegCommand(input, output);
 
-	@ReactMethod
-	public final void transcode(final ReadableMap options, final Promise promise) {
-		final Optional<String> paramErrors = this.checkRequiredOptions(options);
-		if (paramErrors.exists) {
-			promise.reject(paramErrors.value);
-		} else {
-			try {
-				ffmpeg.loadBinary(new LoadBinaryResponseHandler() {
-					@Override
-					public void onFailure() {
-						Log.e(TAG, "Failed to load ffmpeg");
-						promise.reject("Failed to load ffmpeg binary");
-					}
-					@Override
-					public void onSuccess() {
-						final String input = options.getString("input");
-						final String output = options.getString("output");
-						final String[] command = createFFmpegCommand(input, output);
-						try {
-							ffmpeg.execute(command, new ExecuteBinaryResponseHandler() {
-								@Override
-								public void onFailure(String s) {
-									promise.reject(s);
-								}
+            RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
+                @Override
+                public void onFinish() {
+                    promise.resolve(makeMessagePayload("onFinish"));
+                }
 
-								@Override
-								public void onSuccess(String s) {
-									promise.resolve(makeMessagePayload(s));
-								}
-							});
-						} catch (FFmpegCommandAlreadyRunningException e) {
-							promise.reject(e.getMessage());
-						}
-					}
-				});
-			} catch (FFmpegNotSupportedException e) {
-				Log.e(TAG, "FFMPEG NOT SUPPORTED");
-				promise.reject(e.getMessage());
-			}
-		}
-	}
+                @Override
+                public void onProgress(int progress, long progressTime) {
+                }
 
-	private final ReadableMap makeMessagePayload(final String message) {
-		final WritableMap payload = Arguments.createMap();
-		payload.putString("message", message);
-		return payload;
-	}
+                @Override
+                public void onCancel() {
+                    promise.reject("onCancel");
+                }
 
-	private final String[] createFFmpegCommand(final String input, final String output) {
-		return String.format(COMMAND_FORMAT, input, output).split(" ");
-	}
+                @Override
+                public void onError(String message) {
+                    promise.reject(message);
+                }
+            });
+        }
+    }
 
-	private final Optional<String> checkRequiredOptions(final ReadableMap options) {
-		if (!options.hasKey("input")) return Optional.of("Missing required parameter 'input'");
-		if (!options.hasKey("output")) return Optional.of("Missing required parameter 'output'");
+    private final ReadableMap makeMessagePayload(final String message) {
+        final WritableMap payload = Arguments.createMap();
+        payload.putString("message", message);
+        return payload;
+    }
 
-		return Optional.empty();
-	}
+    private final String[] createFFmpegCommand(final String input, final String output) {
+        String imagePath = "/data/user/0/com.unitive.artistapp/files/sound_only.png";
+        return String.format(COMMAND_FORMAT, imagePath, input, output).split(" ");
+    }
+
+    private final Optional<String> checkRequiredOptions(final ReadableMap options) {
+        if (!options.hasKey("input")) return Optional.of("Missing required parameter 'input'");
+        if (!options.hasKey("output"))
+            return Optional.of("Missing required parameter 'output'");
+
+        return Optional.empty();
+    }
 }
