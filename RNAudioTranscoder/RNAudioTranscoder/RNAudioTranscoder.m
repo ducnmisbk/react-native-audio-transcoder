@@ -17,16 +17,6 @@ RCT_EXPORT_METHOD(
 ) {
     NSString *inputPath = obj[@"input"];
     NSURL *inputURL = [[NSURL alloc] initFileURLWithPath:inputPath];
-//    NSString *outputPath = obj[@"output"];
-//    NSError *rgError = nil;
-//    NSRegularExpression *replacer = [NSRegularExpression regularExpressionWithPattern:@"\\.mp3$"
-//                                                                              options:NSRegularExpressionCaseInsensitive
-//                                                                                error:&rgError];
-//
-//    if (rgError != nil) {
-//        reject(@"Failed to create temp path for output", rgError.localizedDescription, rgError);
-//        return;
-//    }
     
     AVURLAsset *audiotrack = [AVURLAsset assetWithURL:inputURL];
     NSMutableArray *imagesArray = [NSMutableArray array];
@@ -53,7 +43,7 @@ RCT_EXPORT_METHOD(
         [self mergeAudio:inputURL withVideo:videoUrl andSaveToPathUrl:output withCompletion:^(BOOL success) {
             if (success) {
                 UISaveVideoAtPathToSavedPhotosAlbum(output, self, nil, nil);
-                resolve(@"Successfully encoded audio");
+                resolve(output);
             } else {
                 reject(@"Export Failed", nil, nil);
             }

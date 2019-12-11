@@ -12,6 +12,7 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
 
+import java.io.File;
 
 import io.microshow.rxffmpeg.RxFFmpegInvoke;
 import io.microshow.rxffmpeg.RxFFmpegSubscriber;
@@ -41,9 +42,19 @@ public final class RNAudioTranscoder extends ReactContextBaseJavaModule {
             final String output = options.getString("output");
             String[] commands = this.createFFmpegCommand(input, output);
 
+            File fDelete = new File(output);
+            if (fDelete.exists()) {
+                fDelete.delete();
+            }
+
             RxFFmpegInvoke.getInstance().runCommandRxJava(commands).subscribe(new RxFFmpegSubscriber() {
                 @Override
                 public void onFinish() {
+                    File fDelete = new File(input);
+                    if (fDelete.exists()) {
+                        fDelete.delete();
+                    }
+                    RxFFmpegInvoke.getInstance().exit();
                     promise.resolve(makeMessagePayload("onFinish"));
                 }
 

@@ -1,5 +1,5 @@
-const { NativeModules } = require('react-native')
-const RNAudioTranscoder = NativeModules.RNAudioTranscoder
+const { NativeModules } = require("react-native");
+const RNAudioTranscoder = NativeModules.RNAudioTranscoder;
 
 /**
  * Attempt to transcode the audio file at the specified input path to the one at the specified output path
@@ -11,18 +11,19 @@ const RNAudioTranscoder = NativeModules.RNAudioTranscoder
  * @returns {Promise.<boolean>}
  */
 async function transcode(input, output, log = false) {
-	if (log) {
-		try {
-			await RNAudioTranscoder.transcode({ input, output })
-		} catch (e) {
-			console.error(e.message)
-			return false
-		}
-		return true
-	}
+  var result;
+  if (log) {
+    try {
+      result = await RNAudioTranscoder.transcode({ input, output });
+    } catch (e) {
+      console.error(e.message);
+      return e;
+    }
+    return result;
+  }
 
-	await RNAudioTranscoder.transcode({ input, output })
-	return true
+  result = await RNAudioTranscoder.transcode({ input, output });
+  return result;
 }
 
-module.exports = { transcode }
+module.exports = { transcode };
