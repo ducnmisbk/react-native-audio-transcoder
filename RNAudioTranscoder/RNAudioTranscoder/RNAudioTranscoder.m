@@ -16,6 +16,9 @@ RCT_EXPORT_METHOD(
     rejecter: (RCTPromiseRejectBlock) reject
 ) {
     NSString *inputPath = obj[@"input"];
+    if ([inputPath hasPrefix:@"file"]) {
+        inputPath = [inputPath stringByReplacingOccurrencesOfString:@"file:/" withString:@""];
+    }
     NSURL *inputURL = [[NSURL alloc] initFileURLWithPath:inputPath];
     
     AVURLAsset *audiotrack = [AVURLAsset assetWithURL:inputURL];
@@ -36,38 +39,60 @@ RCT_EXPORT_METHOD(
                   animateTransitions:nil
                    withCallbackBlock:^(BOOL success1) {
         
-        NSError *error = nil;
-        
-        NSURL *videoUrl = [[NSURL alloc] initFileURLWithPath:tempPath];
-        
-        [self mergeAudio:inputURL withVideo:videoUrl andSaveToPathUrl:output withCompletion:^(BOOL success) {
-            if (success) {
-                UISaveVideoAtPathToSavedPhotosAlbum(output, self, nil, nil);
-                resolve(output);
-            } else {
-                reject(@"Export Failed", nil, nil);
-            }
-        }];
+        if (success1) {
+            NSURL *videoUrl = [[NSURL alloc] initFileURLWithPath:tempPath];
+            [self mergeAudio:inputURL withVideo:videoUrl andSaveToPathUrl:output withCompletion:^(BOOL success) {
+                if (success) {
+                    // UISaveVideoAtPathToSavedPhotosAlbum(output, self, nil, nil);
+                    resolve(output);
+                } else {
+                    reject(@"Export Failed", nil, nil);
+                }
+            }];
+        } else {
+            reject(@"Export Failed", nil, nil);
+        }
+       
     }];
 }
 
 - (void)mergeAudio:(NSURL *) audioURL withVideo:(NSURL *) videoURL andSaveToPathUrl:(NSString *) savePath withCompletion:(void (^)(BOOL success))completion {
-
-    AVURLAsset* audioAsset = [[AVURLAsset alloc]initWithURL:audioURL options:nil];
-    AVURLAsset* videoAsset = [[AVURLAsset alloc]initWithURL:videoURL options:nil];
+    dispatch_semaphore_t sem1 = dispatch_semaphore_create(0);
+    AVURLAsset *audioAsset = [[AVURLAsset alloc] initWithURL:audioURL options:nil];
+    [audioAsset loadValuesAsynchronouslyForKeys:@[@"tracks"] completionHandler:^{
+        NSLog(@"LOAD AUDIO COMPLETED");
+        dispatch_semaphore_signal(sem1);
+    }];
+    dispatch_semaphore_wait(sem1, DISPATCH_TIME_FOREVER);
+    
+    dispatch_semaphore_t sem2 = dispatch_semaphore_create(0);
+    AVURLAsset* videoAsset = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+    [videoAsset loadValuesAsynchronouslyForKeys:@[@"tracks"] completionHandler:^{
+        NSLog(@"LOAD VIDEO COMPLETED");
+        dispatch_semaphore_signal(sem2);
+    }];
+    dispatch_semaphore_wait(sem2, DISPATCH_TIME_FOREVER);
+    
+    NSArray *audioTracks = [audioAsset tracksWithMediaType:AVMediaTypeAudio];
+    NSArray *videoTracks = [videoAsset tracksWithMediaType:AVMediaTypeVideo];
+    
+    if (audioTracks.count == 0 || videoTracks.count == 0) {
+        completion(NO);
+        return;
+    }
 
     AVMutableComposition* mixComposition = [AVMutableComposition composition];
 
     AVMutableCompositionTrack *compositionCommentaryTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeAudio
     preferredTrackID:kCMPersistentTrackID_Invalid];
     [compositionCommentaryTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration)
-    ofTrack:[[audioAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+    ofTrack:[audioTracks objectAtIndex:0]
     atTime:kCMTimeZero error:nil];
 
     AVMutableCompositionTrack *compositionVideoTrack = [mixComposition addMutableTrackWithMediaType:AVMediaTypeVideo
     preferredTrackID:kCMPersistentTrackID_Invalid];
     [compositionVideoTrack insertTimeRange:CMTimeRangeMake(kCMTimeZero, audioAsset.duration)
-    ofTrack:[[videoAsset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+    ofTrack:[videoTracks objectAtIndex:0]
     atTime:kCMTimeZero error:nil];
 
     AVAssetExportSession* _assetExport = [[AVAssetExportSession alloc] initWithAsset:mixComposition
