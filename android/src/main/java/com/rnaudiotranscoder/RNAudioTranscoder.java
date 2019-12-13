@@ -20,7 +20,7 @@ import io.microshow.rxffmpeg.RxFFmpegSubscriber;
 
 public final class RNAudioTranscoder extends ReactContextBaseJavaModule {
 
-    public final String COMMAND_FORMAT = "ffmpeg -loop 1 -i %s -i %s -c:a copy -c:v libx264 -shortest %s";
+    public final String COMMAND_FORMAT = "ffmpeg -loop 1 -y -i %s -i %s -shortest -acodec copy -vcodec copy %s";
     public final String TAG = "RNAudioTranscoder";
 
     public RNAudioTranscoder(final ReactApplicationContext context) {
